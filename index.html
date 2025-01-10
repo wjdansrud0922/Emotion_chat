@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Matching</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Random Matching</h2>
+    <button id="connectButton">Find a Match</button>
+    <div id="status">Click "Find a Match" to start</div>
+</div>
+
+<script>
+    let socket; // WebSocket 연결 변수
+    const statusDiv = document.getElementById("status");
+    const connectButton = document.getElementById("connectButton");
+
+    connectButton.addEventListener("click", () => {
+        // WebSocket 연결 초기화
+        socket = new WebSocket("ws://localhost:8080/ws");
+
+        // WebSocket 연결 성공 시
+        socket.onopen = () => {
+            statusDiv.innerText = "Looking for a match...";
+            connectButton.disabled = true;
+            connectButton.innerText = "Waiting...";
+        };
+
+        // 서버에서 메시지를 받을 때
+        socket.onmessage = (event) => {
+            statusDiv.innerText = event.data; // 매칭 성공 메시지 표시
+            connectButton.disabled = false;
+            connectButton.innerText = "Find Another Match";
+        };
+
+        // WebSocket 연결이 닫혔을 때
+        socket.onclose = () => {
+            statusDiv.innerText = "Disconnected from server.";
+            connectButton.disabled = false;
+            connectButton.innerText = "Reconnect";
+        };
+
+        // WebSocket 오류 발생 시
+        socket.onerror = (error) => {
+            console.error("WebSocket Error: ", error);
+            statusDiv.innerText = "An error occurred. Please try again.";
+            connectButton.disabled = false;
+        };
+    });
+</script>
+</body>
+</html>
