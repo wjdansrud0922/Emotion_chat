@@ -7,9 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"log"
+	"net/http"
 )
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// 모든 오리진 허용 (필요에 따라 도메인 제한 가능)
+		return true
+	},
+}
 
 func MatchingHandler(c *gin.Context, rooms map[string]*model.Room) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
