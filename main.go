@@ -154,7 +154,8 @@ func startChat(sender *User, reader *User) {
 	defer func() {
 		sender.Conn.Close()
 		reader.Conn.Close()
-		delete(rooms, sender.Room.RoomId)
+		deleteRoom(sender, reader)
+
 	}()
 
 	for {
@@ -174,6 +175,16 @@ func startChat(sender *User, reader *User) {
 		}
 
 	}
+}
+
+func deleteRoom(sender *User, reader *User) {
+	sender.Room.mutex.Lock()
+	defer sender.Room.mutex.Unlock()
+
+	if sender.Conn == nil || reader.Conn == nil {
+		delete(rooms, sender.Room.RoomId)
+	}
+
 }
 
 func generateId() string {

@@ -23,6 +23,9 @@ function connectWebSocket() {
         if (message === 'matched') {
             // When a match is found, wait 2 seconds before showing the chat screen
             setTimeout(() => {
+                // 채팅 메시지 초기화
+                const messagesDiv = document.getElementById('chat-messages');
+                messagesDiv.innerHTML = ''; // 모든 메시지 제거
                 showScreen('chat-screen');
             }, 2000);
         } else {
@@ -30,10 +33,15 @@ function connectWebSocket() {
         }
     };
 
+
     ws.onclose = () => {
         console.log('WebSocket 연결 끊김');
+        // 채팅 기록 초기화
+        const messagesDiv = document.getElementById('chat-messages');
+        messagesDiv.innerHTML = '';
         showScreen('emotion-select');
     };
+
 }
 
 // 메시지 추가 함수
