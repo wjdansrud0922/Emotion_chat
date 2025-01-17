@@ -76,78 +76,41 @@ func Match(user User) {
 
 	//각 매칭 큐마다 2명 이상이면 짝찌
 	if len(happyQueue) >= 2 {
-		user1 := &happyQueue[0]
-		user2 := &happyQueue[1]
-
-		roomId := generateId()
-		room := &Room{
-			RoomId: roomId,
-		}
-		rooms[roomId] = room
-
-		user1.Room = room
-		user2.Room = room
-
-		room.Users[0] = user1
-		room.Users[1] = user2
-
-		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-
-		go startChat(user1, user2)
-		go startChat(user2, user1)
-
-		happyQueue = happyQueue[2:] //사용자 두명 지워버리
+		matchingUsers(happyQueue)
 	}
 
 	if len(sadQueue) >= 2 {
-		user1 := &sadQueue[0]
-		user2 := &sadQueue[1]
-
-		roomId := generateId()
-		room := &Room{
-			RoomId: roomId,
-		}
-		rooms[roomId] = room
-
-		user1.Room = room
-		user2.Room = room
-
-		room.Users[0] = user1
-		room.Users[1] = user2
-		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-
-		go startChat(user1, user2)
-		go startChat(user2, user1)
-
-		sadQueue = sadQueue[2:] //사용자 두명 지워버리
+		matchingUsers(sadQueue)
 	}
 
 	if len(angryQueue) >= 2 {
-		user1 := &angryQueue[0]
-		user2 := &angryQueue[1]
-
-		roomId := generateId()
-		room := &Room{
-			RoomId: roomId,
-		}
-		rooms[roomId] = room
-
-		user1.Room = room
-		user2.Room = room
-
-		room.Users[0] = user1
-		room.Users[1] = user2
-
-		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
-
-		go startChat(user1, user2)
-		go startChat(user2, user1)
-
-		angryQueue = angryQueue[2:] //사용자 두명 지워버리
+		matchingUsers(angryQueue)
 	}
+}
+
+func matchingUsers(queue []User) {
+	user1 := &queue[0]
+	user2 := &queue[1]
+
+	roomId := generateId()
+	room := &Room{
+		RoomId: roomId,
+	}
+	rooms[roomId] = room
+
+	user1.Room = room
+	user2.Room = room
+
+	room.Users[0] = user1
+	room.Users[1] = user2
+
+	user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+	user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+
+	go startChat(user1, user2)
+	go startChat(user2, user1)
+
+	queue = queue[2:] //사용자 두명 지워버리
 }
 
 func startChat(sender *User, reader *User) {
