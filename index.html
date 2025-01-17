@@ -1,89 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Matching</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #status {
-            margin-top: 20px;
-            font-size: 18px;
-            color: #333;
-        }
-    </style>
+    <title>감정 채팅</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
-<div class="container">
-    <h2>Random Matching</h2>
-    <button id="connectButton">Find a Match</button>
-    <div id="status">Click "Find a Match" to start</div>
+<!-- 감정 선택 화면 -->
+<div id="emotion-select" class="screen active">
+    <div class="emotion-grid">
+        <button class="emotion-btn happy" data-emotion="happy">
+            <span class="emoji">😊</span>
+            <span class="text">기쁨</span>
+        </button>
+        <button class="emotion-btn angry" data-emotion="angry">
+            <span class="emoji">😠</span>
+            <span class="text">화남</span>
+        </button>
+        <button class="emotion-btn sad" data-emotion="sad">
+            <span class="emoji">😢</span>
+            <span class="text">슬픔</span>
+        </button>
+    </div>
 </div>
 
-<script>
-    let socket; // WebSocket 연결 변수
-    const statusDiv = document.getElementById("status");
-    const connectButton = document.getElementById("connectButton");
+<!-- 매칭 대기 화면 -->
+<div id="matching-screen" class="screen">
+    <div class="matching-content">
+        <div class="spinner"></div>
+        <h2>매칭 중...</h2>
+        <p class="selected-emotion">선택한 감정: <span id="selected-emotion-text"></span></p>
+        <button id="cancel-matching" class="cancel-btn">매칭 취소</button>
+    </div>
+</div>
 
-    connectButton.addEventListener("click", () => {
-        // WebSocket 연결 초기화
-        socket = new WebSocket("ws://localhost:8080/ws");
-
-        // WebSocket 연결 성공 시
-        socket.onopen = () => {
-            statusDiv.innerText = "Looking for a match...";
-            connectButton.disabled = true;
-            connectButton.innerText = "Waiting...";
-        };
-
-        // 서버에서 메시지를 받을 때
-        socket.onmessage = (event) => {
-            statusDiv.innerText = event.data; // 매칭 성공 메시지 표시
-            connectButton.disabled = false;
-            connectButton.innerText = "Find Another Match";
-        };
-
-        // WebSocket 연결이 닫혔을 때
-        socket.onclose = () => {
-            statusDiv.innerText = "Disconnected from server.";
-            connectButton.disabled = false;
-            connectButton.innerText = "Reconnect";
-        };
-
-        // WebSocket 오류 발생 시
-        socket.onerror = (error) => {
-            console.error("WebSocket Error: ", error);
-            statusDiv.innerText = "An error occurred. Please try again.";
-            connectButton.disabled = false;
-        };
-    });
-</script>
+<!-- 채팅 화면 -->
+<div id="chat-screen" class="screen">
+    <div class="chat-container">
+        <div class="chat-header">
+            <button id="leave-chat" class="leave-btn">나가기</button>
+            <h2>채팅방</h2>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+            <input type="text" id="message-input" placeholder="메시지를 입력하세요...">
+            <button id="send-message" class="send-btn">전송</button>
+        </div>
+    </div>
+</div>
 </body>
+<script src="static/script.js"></script>
 </html>

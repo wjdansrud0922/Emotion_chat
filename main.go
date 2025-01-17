@@ -5,131 +5,189 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"net/http"
+	"log"
 	"sync"
-	"time"
 )
 
-type User struct {
-	Feel string
-	Id   string
-	conn *websocket.Conn
-}
-
-type MatchingPool struct {
-	mu    sync.Mutex
-	queue chan *User
-}
-
-type Rooms struct {
-	Rooms map[string]*Room
-	mutex sync.Mutex
-}
+var upgrader = websocket.Upgrader{}
 
 type Room struct {
-	users map[*User]bool
-	mu    sync.Mutex
+	RoomId string
+	Users  [2]*User
+	mutex  sync.Mutex
 }
 
-var rooms = Rooms{
-	Rooms: make(map[string]*Room),
+type User struct {
+	ID      string `json:"id"`
+	Emotion string `json:"emotion"`
+	Conn    *websocket.Conn
+	Room    *Room
 }
 
-func NewMatchingPool(maxQueueSize int) *MatchingPool {
-	return &MatchingPool{
-		queue: make(chan *User, maxQueueSize),
-	}
-}
+var (
+	happyQueue []User
+	sadQueue   []User
+	angryQueue []User
+	mutex      sync.Mutex
+	rooms      map[string]*Room
+)
 
-func GenerateNewRoom(user1 *User, user2 *User) string {
-	roomID := generateRoomId()
-	rooms.mutex.Lock()
-	defer rooms.mutex.Unlock()
-	rooms.Rooms[roomID] = &Room{
-		users: map[*User]bool{
-			user1: true,
-			user2: true,
-		},
-	}
-	return roomID
-}
-
-func (p *MatchingPool) AddUser(user *User) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.queue <- user
-}
-
-func (p *MatchingPool) GetUsers() (*User, *User, bool) {
-	user1, ok1 := <-p.queue
-	user2, ok2 := <-p.queue
-	if ok1 && ok2 {
-		return user1, user2, true
-	}
-	return nil, nil, false
-}
-
-func generateUserId() string {
-	ud, err := uuid.NewRandom()
-	if err != nil {
-		panic("generateUserId 함수에서 오류 발생")
-	}
-	return ud.String()
-}
-
-func generateRoomId() string {
-	ud, err := uuid.NewRandom()
-	if err != nil {
-		panic("generateRoomId 함수에서 오류 발생")
-	}
-	return ud.String()
-}
-
-func handleWebSocket(c *gin.Context, pool *MatchingPool) {
+func matchingHandler(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket upgrade failed"})
+
+		log.Fatalln("소켓 연결 실패", err.Error())
 		return
 	}
 
+	userID := generateId()
 	user := &User{
-		Feel: "기쁨",
-		Id:   generateUserId(),
-		conn: conn,
+		ID:   userID,
+		Conn: conn,
 	}
-	pool.AddUser(user)
-	fmt.Println("New user added to matching pool", user.Id)
+
+	_, emotion, err := conn.ReadMessage()
+	if err != nil {
+
+		log.Fatalln("감정 읽기 실패", err.Error())
+		return
+	}
+	fmt.Println(string(emotion))
+	user.Emotion = string(emotion)
+
+	Match(*user)
+
 }
 
-func StartMatching(pool *MatchingPool) {
-	go func() {
-		for {
-			user1, user2, ok := pool.GetUsers()
-			if !ok {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			GenerateNewRoom(user1, user2)
+func Match(user User) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	userP := &user
+
+	switch userP.Emotion {
+	case "happy":
+		happyQueue = append(happyQueue, *userP)
+	case "sad":
+		sadQueue = append(sadQueue, *userP)
+	case "angry":
+		angryQueue = append(angryQueue, *userP)
+	}
+
+	//각 매칭 큐마다 2명 이상이면 짝찌
+	if len(happyQueue) >= 2 {
+		user1 := &happyQueue[0]
+		user2 := &happyQueue[1]
+
+		roomId := generateId()
+		room := &Room{
+			RoomId: roomId,
 		}
-	}()
+		rooms[roomId] = room
+
+		user1.Room = room
+		user2.Room = room
+
+		room.Users[0] = user1
+		room.Users[1] = user2
+
+		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+
+		go startChat(user1, user2)
+		go startChat(user2, user1)
+
+		happyQueue = happyQueue[2:] //사용자 두명 지워버리
+	}
+
+	if len(sadQueue) >= 2 {
+		user1 := &sadQueue[0]
+		user2 := &sadQueue[1]
+
+		roomId := generateId()
+		room := &Room{
+			RoomId: roomId,
+		}
+		rooms[roomId] = room
+
+		user1.Room = room
+		user2.Room = room
+
+		room.Users[0] = user1
+		room.Users[1] = user2
+		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+
+		go startChat(user1, user2)
+		go startChat(user2, user1)
+
+		sadQueue = sadQueue[2:] //사용자 두명 지워버리
+	}
+
+	if len(angryQueue) >= 2 {
+		user1 := &angryQueue[0]
+		user2 := &angryQueue[1]
+
+		roomId := generateId()
+		room := &Room{
+			RoomId: roomId,
+		}
+		rooms[roomId] = room
+
+		user1.Room = room
+		user2.Room = room
+
+		room.Users[0] = user1
+		room.Users[1] = user2
+
+		user1.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+		user2.Conn.WriteMessage(websocket.TextMessage, []byte("matched"))
+
+		go startChat(user1, user2)
+		go startChat(user2, user1)
+
+		angryQueue = angryQueue[2:] //사용자 두명 지워버리
+	}
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+func startChat(sender *User, reader *User) {
+	defer func() {
+		sender.Conn.Close()
+		reader.Conn.Close()
+		delete(rooms, sender.Room.RoomId)
+	}()
+
+	for {
+		_, msg, err := sender.Conn.ReadMessage()
+		if err != nil {
+			log.Println("Read에러")
+			return
+		}
+		if string(msg) != "matched" {
+			//if err := sender.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			//	log.Println("sender Write에러")
+			//}
+
+			if err := reader.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				log.Println("reader Write에러")
+			}
+		}
+
+	}
+}
+
+func generateId() string {
+	return uuid.New().String()
 }
 
 func main() {
-	r := gin.Default()
-
-	pool := NewMatchingPool(100)
-
-	StartMatching(pool)
-
-	r.GET("/ws", func(c *gin.Context) {
-		handleWebSocket(c, pool)
+	rooms = make(map[string]*Room)
+	router := gin.Default()
+	router.Static("/static", "./static")
+	router.GET("/ws", matchingHandler)
+	router.GET("/", func(c *gin.Context) {
+		c.File("./index.html")
 	})
 
-	r.Run(":8080")
+	router.Run(":8080")
 }
