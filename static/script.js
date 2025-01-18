@@ -20,7 +20,9 @@ function connectWebSocket() {
 
     ws.onmessage = (event) => {
         const message = event.data;
+        console.log(message)
         if (message === 'matched') {
+            // When a match is found, wait 2 seconds before showing the chat screen
             setTimeout(() => {
                 // 채팅 메시지 초기화
                 const messagesDiv = document.getElementById('chat-messages');
@@ -104,4 +106,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
