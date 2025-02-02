@@ -11,7 +11,7 @@ function showScreen(screenId) {
 
 // WebSocket 연결 함수
 function connectWebSocket() {
-    ws = new WebSocket('ws://localhost:8080/ws');
+    ws = new WebSocket('wss://typical-katlin-wjdnasurd-3b7e55e6.koyeb.app/ws');
 
     ws.onopen = () => {
         console.log('WebSocket 연결됨');
@@ -20,9 +20,9 @@ function connectWebSocket() {
 
     ws.onmessage = (event) => {
         const message = event.data;
-        console.log(message)
+        console.log(message);
         if (message === 'matched') {
-            // When a match is found, wait 2 seconds before showing the chat screen
+            // 매칭 성공 시 2초 후 채팅 화면으로 전환
             setTimeout(() => {
                 // 채팅 메시지 초기화
                 const messagesDiv = document.getElementById('chat-messages');
@@ -34,7 +34,6 @@ function connectWebSocket() {
         }
     };
 
-
     ws.onclose = () => {
         console.log('WebSocket 연결 끊김');
         // 채팅 기록 초기화
@@ -42,7 +41,6 @@ function connectWebSocket() {
         messagesDiv.innerHTML = '';
         showScreen('emotion-select');
     };
-
 }
 
 // 메시지 추가 함수
